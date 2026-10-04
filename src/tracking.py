@@ -4,29 +4,25 @@ from ultralytics import YOLO
 class VehicleTracker:
 
     def __init__(self):
-        self.model = YOLO("yolo11n.pt")
 
-    def track(self, source):
-        return self.model.track(
+        self.model = YOLO("models/yolo11n.pt")
+
+    def track(self, source, on_frame=None):
+        results = self.model.track(
             source=source,
             persist=True,
             tracker="bytetrack.yaml",
-            conf=0.3,
-            imgsz=1280,
-            save=True
+            conf=0.15,
+            imgsz=640,
+            stream=True,
+            verbose=False
         )
 
         for r in results:
-            boxes = r.boxes
 
-            for box in boxes:
-                print("Class:", int(box.cls))
-                print("Confidence:", float(box.conf))
+            # الصورة الأصلية بعد معالجة YOLO
+            annotated_frame = r.plot()
 
-            if box.id is not None:
-                print("Track ID:", int(box.id))
-
-            print("Box:", box.xyxy)
-            print("----------------")
-
-        return results
+            # إرسال الفريم إلى GUI
+            if on_frame:
+                on_frame(annotated_frame)

@@ -6,10 +6,12 @@ def main():
 
     tracker = VehicleTracker()
 
-    def start_tracking(video_path):
-        tracker.track(video_path)
+    def start_tracking(video_path, on_frame):
+        tracker.track(
+            video_path,
+            on_frame
+        )
 
-    # The connection between the GUI and the tracking function
     gui = TrafficGUI(
         on_start=start_tracking
     )
