@@ -13,10 +13,7 @@ class TrafficGUI:
         self.on_start = on_start
         self.running = False
 
-        # =========================
         # Main Window
-        # =========================
-
         self.root = ctk.CTk()
 
         self.root.title("Traffic Monitoring System")
@@ -25,11 +22,9 @@ class TrafficGUI:
 
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
-
         # =========================
         # Header
         # =========================
-
         self.header = ctk.CTkFrame(
             self.root,
             corner_radius=15
@@ -152,13 +147,45 @@ class TrafficGUI:
         self.create_stat("Trucks", "0")
         self.create_stat("Motorcycles", "0")
 
+        # =========================
+        # Total Vehicles
+        # =========================
+
         self.total_label = ctk.CTkLabel(
             self.stats_frame,
             text="TOTAL VEHICLES\n0",
             font=("Arial", 19, "bold")
         )
 
-        self.total_label.pack(pady=25)
+        self.total_label.pack(pady=20)
+
+        # =========================
+        # Going
+        # =========================
+
+        self.going_label = ctk.CTkLabel(
+            self.stats_frame,
+            text="GOING\n0",
+            font=("Arial", 17, "bold")
+        )
+
+        self.going_label.pack(pady=10)
+
+        # =========================
+        # Returning
+        # =========================
+
+        self.returning_label = ctk.CTkLabel(
+            self.stats_frame,
+            text="RETURNING\n0",
+            font=("Arial", 17, "bold")
+        )
+
+        self.returning_label.pack(pady=10)
+
+        # =========================
+        # Revenue
+        # =========================
 
         self.revenue_label = ctk.CTkLabel(
             self.stats_frame,
@@ -166,7 +193,7 @@ class TrafficGUI:
             font=("Arial", 19, "bold")
         )
 
-        self.revenue_label.pack()
+        self.revenue_label.pack(pady=15)
 
         # =========================
         # Control Area
@@ -183,7 +210,10 @@ class TrafficGUI:
             pady=(10, 20)
         )
 
+        # =========================
         # Select Video
+        # =========================
+
         self.select_button = ctk.CTkButton(
             self.controls,
             text="Select Video",
@@ -198,7 +228,10 @@ class TrafficGUI:
             pady=15
         )
 
+        # =========================
         # Start
+        # =========================
+
         self.start_button = ctk.CTkButton(
             self.controls,
             text="▶  START",
@@ -212,7 +245,10 @@ class TrafficGUI:
             padx=10
         )
 
+        # =========================
         # Stop
+        # =========================
+
         self.stop_button = ctk.CTkButton(
             self.controls,
             text="■  STOP",
@@ -227,7 +263,10 @@ class TrafficGUI:
             padx=10
         )
 
-        # Processing status
+        # =========================
+        # Processing Status
+        # =========================
+
         self.progress_label = ctk.CTkLabel(
             self.controls,
             text="",
@@ -353,6 +392,7 @@ class TrafficGUI:
                 0,
                 self.processing_done
             )
+
         except Exception as e:
 
             error_message = str(e)
@@ -361,51 +401,85 @@ class TrafficGUI:
                 0,
                 lambda: self.processing_error(error_message)
             )
+
     # =====================================================
     # Receive Frame From YOLO
     # =====================================================
 
-    def update_frame(self, frame):
+    def update_frame(self, frame, stats):
 
         # لأن YOLO يعمل في Thread منفصل،
         # لا نعدل GUI مباشرة.
+
         self.root.after(
             0,
-            lambda: self.display_frame(frame)
+            lambda: self.display_frame(frame, stats)
         )
 
     # =====================================================
     # Display Frame
     # =====================================================
 
-    def display_frame(self, frame):
+    def display_frame(self, frame, stats):
 
-        # YOLO/OpenCV يستخدم BGR
-        # PIL يحتاج RGB
+        # =========================
+        # Update Statistics
+        # =========================
+
+        self.total_label.configure(
+            text=f"TOTAL VEHICLES\n{stats['total']}"
+        )
+
+        self.going_label.configure(
+            text=f"GOING\n{stats['going']}"
+        )
+
+        self.returning_label.configure(
+            text=f"RETURNING\n{stats['returning']}"
+        )
+
+        # =========================
+        # Convert BGR → RGB
+        # =========================
 
         frame_rgb = frame[:, :, ::-1]
 
         image = Image.fromarray(frame_rgb)
 
-        # حجم منطقة العرض
+        # =========================
+        # Video Area Size
+        # =========================
+
         width = self.video_area.winfo_width()
         height = self.video_area.winfo_height()
 
         if width <= 1 or height <= 1:
+
             width = 800
             height = 500
 
-        # الحفاظ على نسبة أبعاد الفيديو
+        # =========================
+        # Keep Aspect Ratio
+        # =========================
+
         image.thumbnail(
             (width, height),
             Image.Resampling.LANCZOS
         )
+
+        # =========================
+        # Create CTk Image
+        # =========================
 
         self.video_image = ctk.CTkImage(
             light_image=image,
             dark_image=image,
             size=image.size
         )
+
+        # =========================
+        # Display Frame
+        # =========================
 
         self.video_area.configure(
             image=self.video_image,
