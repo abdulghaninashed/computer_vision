@@ -20,19 +20,30 @@ class VehicleTracker:
         self.going_count = 0
         self.returning_count = 0
 
-    def track(self, source, on_frame=None):
+    def track(self, source, on_frame=None, stop_event=None):
+
+        if stop_event is not None and stop_event.is_set():
+            return
 
         results = self.model.track(
             source=source,
             persist=True,
             tracker="bytetrack.yaml",
-            conf=0.3,
+            conf=0.15,
             imgsz=640,
             stream=True,
             verbose=False
         )
 
-        for r in results:
+        result_iterator = iter(results)
+        while stop_event is None or not stop_event.is_set():
+            try:
+                r = next(result_iterator)
+            except StopIteration:
+                break
+
+            if stop_event is not None and stop_event.is_set():
+                break
 
             frame = r.orig_img
 
