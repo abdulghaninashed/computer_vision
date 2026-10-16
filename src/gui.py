@@ -243,12 +243,18 @@ class TrafficGUI:
         self.on_report = on_report      # اختياري: دالة عرض التقرير
         self.running = False
         self.stop_event = threading.Event()
+        self.settings_window = None
+        self.center_line_slider = None
 
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
 
         # Main Window
         self.root = ctk.CTk(fg_color=BG)
+        self.center_line_percent = ctk.DoubleVar(
+            master=self.root,
+            value=50
+        )
 
         # شريط العنوان يعرض العربية بشكل صحيح من النظام نفسه
         self.root.title("برنامج الخوارزمي - Traffic Monitoring System")
@@ -569,6 +575,28 @@ class TrafficGUI:
             padx=8
         )
 
+        # Settings
+        self.settings_button = ctk.CTkButton(
+            self.controls,
+            text=ar("الإعدادات"),
+            width=115,
+            height=38,
+            corner_radius=8,
+            fg_color=WHITE,
+            border_width=1,
+            border_color=BORDER,
+            hover_color=PANEL_BG,
+            text_color=NAVY,
+            text_color_disabled=DISABLED,
+            font=(FONT_FAMILY, 13, "bold"),
+            command=self.open_settings
+        )
+
+        self.settings_button.pack(
+            side="left",
+            padx=8
+        )
+
         # Processing Status
         self.progress_label = ctk.CTkLabel(
             self.controls,
@@ -688,6 +716,95 @@ class TrafficGUI:
                 text_color=BLUE
             )
 
+    def update_center_line_value(self, value):
+
+        self.center_line_value.configure(
+            text=f"{round(float(value))}%"
+        )
+
+    def open_settings(self):
+
+        if self.settings_window is not None:
+            if self.settings_window.winfo_exists():
+                self.settings_window.lift()
+                self.settings_window.focus_force()
+                return
+
+        self.settings_window = ctk.CTkToplevel(self.root)
+        self.settings_window.title(ar("الإعدادات"))
+        self.settings_window.geometry("480x250")
+        self.settings_window.resizable(False, False)
+        self.settings_window.transient(self.root)
+        self.settings_window.grab_set()
+        self.settings_window.protocol(
+            "WM_DELETE_WINDOW",
+            self.close_settings
+        )
+
+        settings_frame = ctk.CTkFrame(
+            self.settings_window,
+            corner_radius=16,
+            fg_color=WHITE
+        )
+        settings_frame.pack(
+            fill="both",
+            expand=True,
+            padx=20,
+            pady=20
+        )
+
+        settings_title = ctk.CTkLabel(
+            settings_frame,
+            text=ar("إعدادات التتبع"),
+            text_color=NAVY,
+            font=(FONT_FAMILY, 22, "bold")
+        )
+        settings_title.pack(pady=(20, 8))
+
+        self.center_line_value = ctk.CTkLabel(
+            settings_frame,
+            text=f"{round(self.center_line_percent.get())}%",
+            text_color=BLUE,
+            font=(FONT_FAMILY, 16, "bold")
+        )
+        self.center_line_value.pack(pady=(8, 0))
+
+        self.center_line_slider = ctk.CTkSlider(
+            settings_frame,
+            from_=0,
+            to=100,
+            number_of_steps=100,
+            variable=self.center_line_percent,
+            command=self.update_center_line_value
+        )
+        self.center_line_slider.pack(
+            fill="x",
+            padx=40,
+            pady=(8, 18)
+        )
+
+        close_button = ctk.CTkButton(
+            settings_frame,
+            text=ar("تم"),
+            width=120,
+            height=36,
+            fg_color=TEAL,
+            hover_color=TEAL_HOVER,
+            font=(FONT_FAMILY, 14, "bold"),
+            command=self.close_settings
+        )
+        close_button.pack(pady=(0, 16))
+
+    def close_settings(self):
+
+        if self.settings_window is None:
+            return
+
+        self.settings_window.grab_release()
+        self.settings_window.destroy()
+        self.settings_window = None
+        self.center_line_slider = None
+
     # =====================================================
     # Start
     # =====================================================
@@ -733,10 +850,12 @@ class TrafficGUI:
         self.stop_button.configure(
             state="normal"
         )
+        self.settings_button.configure(state="disabled")
 
         # تشغيل YOLO في Thread منفصل
         thread = threading.Thread(
             target=self.run_tracking,
+            args=(self.center_line_percent.get() / 100.0,),
             daemon=True
         )
 
@@ -746,14 +865,15 @@ class TrafficGUI:
     # Run Tracking
     # =====================================================
 
-    def run_tracking(self):
+    def run_tracking(self, center_line_ratio):
 
         try:
 
             self.on_start(
                 self.video_path,
                 self.update_frame,
-                self.stop_event
+                self.stop_event,
+                center_line_ratio
             )
 
             self.root.after(
@@ -886,6 +1006,7 @@ class TrafficGUI:
         self.stop_button.configure(
             state="disabled"
         )
+        self.settings_button.configure(state="normal")
 
     # =====================================================
     # Processing Error
@@ -917,6 +1038,7 @@ class TrafficGUI:
         self.stop_button.configure(
             state="disabled"
         )
+        self.settings_button.configure(state="normal")
 
     # =====================================================
     # Stop

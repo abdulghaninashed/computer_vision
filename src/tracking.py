@@ -3,9 +3,13 @@ from ultralytics import YOLO
 
 class VehicleTracker:
 
-    def __init__(self):
+    def __init__(self, center_line_ratio=0.5):
 
-        self.model = YOLO("models/yolo11n.pt")
+        if not 0.0 <= center_line_ratio <= 1.0:
+            raise ValueError("center_line_ratio must be between 0.0 and 1.0")
+
+        self.model = YOLO("models/best(6).pt")
+        self.center_line_ratio = center_line_ratio
 
         # Track IDs that already crossed the counting line
         self.counted_ids = set()
@@ -29,7 +33,7 @@ class VehicleTracker:
             source=source,
             persist=True,
             tracker="bytetrack.yaml",
-            conf=0.15,
+            conf=0.30,
             imgsz=640,
             stream=True,
             verbose=False
@@ -61,7 +65,7 @@ class VehicleTracker:
             # Separates going / returning
             # =====================================
 
-            center_line_x = int(width * 0.50)
+            center_line_x = int(width * self.center_line_ratio)
 
             # =====================================
             # Process detected objects
