@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>برنامج الخوارزمي - مراقبة المرور</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark" aria-hidden="true">خ</div>
+                <div>
+                    <h1>برنامج الخوارزمي</h1>
+                    <p>لتحليل واستشعار حركة المرور</p>
+                </div>
+            </div>
+            <div id="status" class="status" data-state="ready">
+                <span class="status-dot"></span>
+                <span id="status-text">جاهز</span>
+            </div>
+        </header>
+
+        <main>
+            <section class="dashboard">
+                <section class="video-panel panel">
+                    <div class="panel-heading">
+                        <div>
+                            <p class="eyebrow">LIVE ANALYSIS</p>
+                            <h2>عرض الفيديو</h2>
+                        </div>
+                        <span class="live-badge"><span></span> مباشر</span>
+                    </div>
+                    <div class="video-frame">
+                        <img id="video-feed" alt="إطار الفيديو بعد التحليل">
+                        <div id="video-placeholder" class="video-placeholder">
+                            <div class="placeholder-icon" aria-hidden="true">▶</div>
+                            <strong>الفيديو سيظهر هنا</strong>
+                            <span>اختر ملف فيديو ثم اضغط على بدء التحليل</span>
+                        </div>
+                    </div>
+                    <div class="video-footer">
+                        <span id="video-name">لم يتم اختيار فيديو</span>
+                        <span id="progress">النظام جاهز لاستقبال فيديو</span>
+                    </div>
+                </section>
+
+                <aside class="stats-panel">
+                    <div class="panel-heading stats-heading">
+                        <div>
+                            <p class="eyebrow">TRAFFIC SUMMARY</p>
+                            <h2>الإحصائيات</h2>
+                        </div>
+                        <span class="stats-icon" aria-hidden="true">▤</span>
+                    </div>
+                    <article class="stat-card total-card">
+                        <span class="stat-icon" aria-hidden="true">↗</span>
+                        <div><span>إجمالي المركبات</span><strong id="total-count">0</strong></div>
+                    </article>
+                    <article class="stat-card going-card">
+                        <span class="stat-icon" aria-hidden="true">→</span>
+                        <div><span>الذهاب</span><strong id="going-count">0</strong></div>
+                    </article>
+                    <article class="stat-card returning-card">
+                        <span class="stat-icon" aria-hidden="true">←</span>
+                        <div><span>الإياب</span><strong id="returning-count">0</strong></div>
+                    </article>
+                    <div class="tip-card">
+                        <span aria-hidden="true">✦</span>
+                        <p>يمكنك ضبط موضع خط المنتصف من نافذة الإعدادات قبل بدء التحليل.</p>
+                    </div>
+                </aside>
+            </section>
+
+            <section class="toolbar panel">
+                <div class="toolbar-actions">
+                    <label class="button button-secondary" for="video-file">
+                        <span aria-hidden="true">＋</span> اختيار فيديو
+                    </label>
+                    <input id="video-file" type="file" accept=".mp4,.avi,.mov,.mkv,video/*">
+                    <button id="start-button" class="button button-primary" type="button" disabled>
+                        <span aria-hidden="true">▶</span> بدء التحليل
+                    </button>
+                    <button id="pause-button" class="button button-quiet" type="button" disabled>
+                        <span aria-hidden="true">Ⅱ</span> إيقاف مؤقت
+                    </button>
+                    <button id="stop-button" class="button button-danger" type="button" disabled>
+                        <span aria-hidden="true">■</span> إيقاف
+                    </button>
+                </div>
+                <button id="settings-button" class="button button-quiet" type="button">
+                    <span aria-hidden="true">⚙</span> الإعدادات
+                </button>
+                <button id="report-button" class="button button-quiet" type="button">
+                    <span aria-hidden="true">▤</span> التقرير
+                </button>
+            </section>
+        </main>
+        <footer>نظام مراقبة وتحليل حركة المرور <span>•</span> معالجة محلية</footer>
+    </div>
+
+    <dialog id="settings-dialog" class="settings-dialog">
+        <form method="dialog" class="dialog-card">
+            <button class="dialog-close" aria-label="إغلاق" value="close">×</button>
+            <p class="eyebrow">PREFERENCES</p>
+            <h2>إعدادات التتبع</h2>
+            <p class="dialog-description">حدد موضع خط المنتصف الذي يفصل بين اتجاهي الحركة.</p>
+            <label class="range-label" for="center-line">
+                <span>موضع خط المنتصف</span>
+                <strong id="center-line-value">50%</strong>
+            </label>
+            <input id="center-line" type="range" min="0" max="100" value="50">
+            <div class="range-ends"><span>يسار · 0٪</span><span>100٪ · يمين</span></div>
+            <button class="button button-primary apply-button" value="close">تم</button>
+        </form>
+    </dialog>
+    <dialog id="report-dialog" class="report-dialog">
+        <div class="dialog-card">
+            <button id="report-close" class="dialog-close" type="button" aria-label="إغلاق">×</button>
+            <p class="eyebrow">VEHICLE REPORT</p>
+            <h2>تقرير المركبات والإيرادات</h2>
+            <p class="dialog-description">أنواع المركبات المسعّرة التي عبرت خط العدّ والأسعار المحددة لكل نوع.</p>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">نوع المركبة</th>
+                            <th scope="col">العدد</th>
+                            <th scope="col">سعر المركبة</th>
+                            <th scope="col">الإجمالي</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-rows"></tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row">إجمالي المركبات</th>
+                            <td id="report-total-count">0</td>
+                            <td></td>
+                            <td id="report-total-revenue">$0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

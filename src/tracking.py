@@ -1,6 +1,14 @@
 from ultralytics import YOLO
 
 
+VEHICLE_PRICES = {
+    "car": 1.0,
+    "van": 1.5,
+    "truck": 2.5,
+    "bus": 2.0,
+}
+
+
 class VehicleTracker:
 
     def __init__(self, center_line_ratio=0.5):
@@ -8,7 +16,7 @@ class VehicleTracker:
         if not 0.0 <= center_line_ratio <= 1.0:
             raise ValueError("center_line_ratio must be between 0.0 and 1.0")
 
-        self.model = YOLO("models/best(6).pt")
+        self.model = YOLO("models/best(7).pt")
         self.center_line_ratio = center_line_ratio
 
         # Track IDs that already crossed the counting line
@@ -20,11 +28,14 @@ class VehicleTracker:
         # Total vehicles
         self.total_count = 0
 
+        # Counts for vehicle types included in the revenue report
+        self.vehicle_counts = dict.fromkeys(VEHICLE_PRICES, 0)
+
         # Count by direction
         self.going_count = 0
         self.returning_count = 0
 
-    def track(self, source, on_frame=None, stop_event=None):
+    def track(self, source, on_frame=None, stop_event=None, resume_event=None):
 
         if stop_event is not None and stop_event.is_set():
             return
@@ -41,6 +52,12 @@ class VehicleTracker:
 
         result_iterator = iter(results)
         while stop_event is None or not stop_event.is_set():
+            if resume_event is not None:
+                resume_event.wait()
+
+            if stop_event is not None and stop_event.is_set():
+                break
+
             try:
                 r = next(result_iterator)
             except StopIteration:
@@ -115,6 +132,8 @@ class VehicleTracker:
                             self.counted_ids.add(track_id)
 
                             self.total_count += 1
+                            if class_name in self.vehicle_counts:
+                                self.vehicle_counts[class_name] += 1
 
                             # =================================
                             # Determine direction
@@ -180,7 +199,8 @@ class VehicleTracker:
             stats = {
                 "total": self.total_count,
                 "going": self.going_count,
-                "returning": self.returning_count
+                "returning": self.returning_count,
+                "vehicle_counts": self.vehicle_counts.copy(),
             }
 
             if on_frame:

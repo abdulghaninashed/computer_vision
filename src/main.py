@@ -1,25 +1,20 @@
+import threading
+import webbrowser
+
 from tracking import VehicleTracker
-from gui import TrafficGUI
+from webapp import create_app
 
 
 def main():
 
     tracker = VehicleTracker(center_line_ratio=0.5)
+    app = create_app(tracker)
+    url = "http://127.0.0.1:5000"
 
-    def start_tracking(video_path, on_frame, stop_event, center_line_ratio):
-        tracker.center_line_ratio = center_line_ratio
-        tracker.track(
-            video_path,
-            on_frame,
-            stop_event
-        )
-
-    gui = TrafficGUI(
-        on_start=start_tracking
-    )
-
-    gui.run()
+    threading.Timer(1, webbrowser.open, args=(url,)).start()
+    app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
 
 
 if __name__ == "__main__":
     main()
+    
