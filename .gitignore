@@ -1,5 +1,7 @@
 .venv/
 .vscode/
+.env
 data/
 models/
 runs/
+.env.example

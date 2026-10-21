@@ -1,4 +1,9 @@
+import math
+
+import cv2
 from ultralytics import YOLO
+
+from send_to_police import PoliceTelegramNotifier
 
 
 VEHICLE_PRICES = {
@@ -8,6 +13,8 @@ VEHICLE_PRICES = {
     "bus": 2.0,
 }
 
+FAST_SPEED_FRAME_RATIO = 0.4
+
 
 class VehicleTracker:
 
@@ -16,7 +23,7 @@ class VehicleTracker:
         if not 0.0 <= center_line_ratio <= 1.0:
             raise ValueError("center_line_ratio must be between 0.0 and 1.0")
 
-        self.model = YOLO("models/best(7).pt")
+        self.model = YOLO("models/best(9).pt")
         self.center_line_ratio = center_line_ratio
 
         # Track IDs that already crossed the counting line
@@ -24,6 +31,9 @@ class VehicleTracker:
 
         # Previous position of every tracked vehicle
         self.previous_positions = {}
+        self.vehicle_speeds = {}
+        self.reported_violations = set()
+        self.police_notifier = PoliceTelegramNotifier()
 
         # Total vehicles
         self.total_count = 0
@@ -40,11 +50,17 @@ class VehicleTracker:
         if stop_event is not None and stop_event.is_set():
             return
 
+        video = cv2.VideoCapture(source)
+        fps = video.get(cv2.CAP_PROP_FPS)
+        video.release()
+        if not math.isfinite(fps) or fps <= 0:
+            fps = None
+
         results = self.model.track(
             source=source,
             persist=True,
             tracker="bytetrack.yaml",
-            conf=0.30,
+            conf=0.40,
             imgsz=640,
             stream=True,
             verbose=False
@@ -107,6 +123,7 @@ class VehicleTracker:
                     # Bottom-center point
                     center_x = int((x1 + x2) / 2)
                     bottom_y = y2
+                    current_position = (center_x, bottom_y)
 
                     # =================================
                     # Check previous position
@@ -114,12 +131,54 @@ class VehicleTracker:
 
                     if track_id in self.previous_positions:
 
-                        previous_y = self.previous_positions[track_id]
+                        previous_x, previous_y = self.previous_positions[track_id]
 
-                        # =================================
-                        # Vehicle crossed counting line
-                        # =================================
+                        if fps is not None:
+                            distance = math.hypot(
+                                center_x - previous_x,
+                                bottom_y - previous_y
+                            )
+                            self.vehicle_speeds[track_id] = distance * fps
 
+                    speed = self.vehicle_speeds.get(track_id)
+                    is_motorcycle = (
+                        "motorcycle" in str(class_name).lower()
+                        or "motorsycle" in str(class_name).lower()
+                    )
+                    is_speeding_car = (
+                        str(class_name).lower() == "car"
+                        and speed is not None
+                        and speed >= width * FAST_SPEED_FRAME_RATIO
+                    )
+                    direction = (
+                        "GOING" if center_x < center_line_x else "RETURNING"
+                    )
+
+                    motorcycle_violation = (track_id, "motorcycle")
+                    if (
+                        is_motorcycle
+                        and motorcycle_violation not in self.reported_violations
+                    ):
+                        self.reported_violations.add(motorcycle_violation)
+                        self.police_notifier.send_violation(direction, "motorcycle")
+
+                    speeding_violation = (track_id, "speeding_car")
+                    if (
+                        is_speeding_car
+                        and speeding_violation not in self.reported_violations
+                    ):
+                        self.reported_violations.add(speeding_violation)
+                        self.police_notifier.send_violation(
+                            direction,
+                            "speeding_car",
+                            speed_px_per_second=speed,
+                        )
+
+                    # =================================
+                    # Vehicle crossed counting line
+                    # =================================
+
+                    if track_id in self.previous_positions:
                         crossed_line = (
                             (previous_y < counting_line_y <= bottom_y)
                             or
@@ -127,28 +186,16 @@ class VehicleTracker:
                         )
 
                         if crossed_line and track_id not in self.counted_ids:
-
-                            # Mark as counted
                             self.counted_ids.add(track_id)
-
                             self.total_count += 1
                             if class_name in self.vehicle_counts:
                                 self.vehicle_counts[class_name] += 1
 
-                            # =================================
-                            # Determine direction
-                            # =================================
-
                             if center_x < center_line_x:
-
                                 self.going_count += 1
-
                                 direction = "GOING"
-
                             else:
-
                                 self.returning_count += 1
-
                                 direction = "RETURNING"
 
                             print(
@@ -158,7 +205,7 @@ class VehicleTracker:
                             )
 
                     # Save current position
-                    self.previous_positions[track_id] = bottom_y
+                    self.previous_positions[track_id] = current_position
 
             # =====================================
             # Draw YOLO boxes
@@ -166,11 +213,43 @@ class VehicleTracker:
 
             annotated_frame = r.plot()
 
+            for box in r.boxes:
+                class_name = str(self.model.names[int(box.cls)]).lower()
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                track_id = int(box.id) if box.id is not None else None
+                speed = self.vehicle_speeds.get(
+                    track_id) if track_id is not None else None
+                is_motorcycle = (
+                    "motorcycle" in class_name or "motorsycle" in class_name
+                )
+                is_fast = speed is not None and speed >= width * FAST_SPEED_FRAME_RATIO
+
+                if is_motorcycle or is_fast:
+                    cv2.rectangle(
+                        annotated_frame,
+                        (x1, y1),
+                        (x2, y2),
+                        (0, 0, 255),
+                        3
+                    )
+
+                if speed is not None:
+                    label = f"{speed:.0f} px/s"
+                    cv2.putText(
+                        annotated_frame,
+                        label,
+                        (x1, min(y2 + 20, height - 5)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 0, 255) if is_motorcycle or is_fast else (
+                            255, 255, 255),
+                        2,
+                        cv2.LINE_AA
+                    )
+
             # =====================================
             # Draw counting line
             # =====================================
-
-            import cv2
 
             cv2.line(
                 annotated_frame,

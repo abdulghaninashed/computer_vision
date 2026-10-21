@@ -105,8 +105,8 @@ footer span { padding: 0 5px; color: #c0c8d4; }
 .dialog-description { margin: 0 0 25px; color: var(--muted); font-size: 13px; }
 .range-label { justify-content: space-between; margin-bottom: 11px; color: #354761; font-size: 13px; }
 .range-label strong { color: #315fba; font: 700 15px "Segoe UI", Arial, sans-serif; }
-#center-line { width: 100%; accent-color: #315fba; }
-.range-ends { justify-content: space-between; margin-top: 4px; color: #9aa5b5; font-size: 11px; }
+#center-line { width: 100%; direction: ltr; accent-color: #315fba; }
+.range-ends { direction: ltr; justify-content: space-between; margin-top: 4px; color: #9aa5b5; font-size: 11px; }
 .apply-button { width: 100%; margin-top: 24px; }
 .report-table-wrap { overflow-x: auto; }
 .report-table { width: 100%; border-collapse: collapse; color: #344968; font-size: 13px; text-align: right; }

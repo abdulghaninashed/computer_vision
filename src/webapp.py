@@ -88,6 +88,8 @@ class TrackingWebApp:
             self.tracker.center_line_ratio = center_line_percent / 100
             self.tracker.counted_ids.clear()
             self.tracker.previous_positions.clear()
+            self.tracker.vehicle_speeds.clear()
+            self.tracker.reported_violations.clear()
             self.tracker.total_count = 0
             self.tracker.going_count = 0
             self.tracker.returning_count = 0
@@ -215,6 +217,8 @@ def create_app(tracker):
             tracking.tracker.vehicle_counts = dict.fromkeys(VEHICLE_PRICES, 0)
             tracking.tracker.counted_ids.clear()
             tracking.tracker.previous_positions.clear()
+            tracking.tracker.vehicle_speeds.clear()
+            tracking.tracker.reported_violations.clear()
             tracking.condition.notify_all()
 
         return jsonify({"status": "reset"})
